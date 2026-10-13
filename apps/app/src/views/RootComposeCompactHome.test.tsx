@@ -3,7 +3,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  getCompactHomeScrollViewportTop,
+  getCompactHomeLeadingSpace,
   RootComposeCompactHome,
 } from "./RootComposeCompactHome";
 import { COMPOSER_EDITOR_AVAILABLE_HEIGHT_PROPERTY } from "@/components/promptbox/ComposerEditorSlot";
@@ -41,16 +41,17 @@ describe("RootComposeCompactHome", () => {
     expect(viewport.contains(screen.getByTestId("recents"))).toBe(true);
   });
 
-  it("pins the scroll viewport so 5.5 rows show once the label sticks", () => {
-    const scrolledBandPx =
-      5.5 * MOBILE_RECENT_ROW_HEIGHT_PX + MOBILE_RECENT_LABEL_HEIGHT_PX;
+  it("rests the list low so 4.5 rows show above the composer before scrolling", () => {
+    const restingBandPx =
+      4.5 * MOBILE_RECENT_ROW_HEIGHT_PX + MOBILE_RECENT_LABEL_HEIGHT_PX;
 
     expect(
-      getCompactHomeScrollViewportTop({
-        regionHeight: 852,
-        composerHeight: 188,
-      }),
-    ).toBe(852 - 188 - scrolledBandPx);
+      56 +
+        getCompactHomeLeadingSpace({
+          regionHeight: 852,
+          composerHeight: 188,
+        }),
+    ).toBe(852 - 188 - restingBandPx);
   });
 
   it("writes measured geometry directly before the compact home paints", () => {
@@ -66,11 +67,13 @@ describe("RootComposeCompactHome", () => {
 
     renderCompactHome();
 
-    const viewport = screen.getByTestId("root-compose-compact-scroll-viewport");
+    const leadingSpacer = screen.getByTestId(
+      "root-compose-compact-leading-spacer",
+    );
     const bottomSpacer = screen.getByTestId(
       "root-compose-compact-bottom-spacer",
     );
-    expect(viewport.style.top).toBe("310px");
+    expect(leadingSpacer.style.height).toBe("314px");
     expect(bottomSpacer.style.height).toBe("188px");
   });
 
@@ -102,20 +105,24 @@ describe("RootComposeCompactHome", () => {
     ).toBe(`${480 - 56 - (682 - 540)}px`);
   });
 
-  it("never lifts the scroll viewport above the app chrome row", () => {
+  it("starts the scroll viewport at the app chrome row so rows scroll up through the band", () => {
+    renderCompactHome();
+
+    const viewport = screen.getByTestId("root-compose-compact-scroll-viewport");
+    const content = screen.getByTestId("root-compose-compact-scroll-content");
+    expect(viewport.style.top).toBe("56px");
+    expect(content.firstElementChild).toBe(
+      screen.getByTestId("root-compose-compact-leading-spacer"),
+    );
+  });
+
+  it("keeps one row of leading space when the region is too short for the band", () => {
     expect(
-      getCompactHomeScrollViewportTop({
+      getCompactHomeLeadingSpace({
         regionHeight: 420,
         composerHeight: 188,
       }),
-    ).toBe(56);
-  });
-
-  it("offsets the resting list by one row so 4.5 show before scrolling", () => {
-    renderCompactHome();
-
-    const offset = screen.getByTestId("root-compose-compact-recents-offset");
-    expect(offset.style.height).toBe(`${MOBILE_RECENT_ROW_HEIGHT_PX}px`);
+    ).toBe(MOBILE_RECENT_ROW_HEIGHT_PX);
   });
 
   it("rests a list that fits on the composer instead of the band top", () => {
