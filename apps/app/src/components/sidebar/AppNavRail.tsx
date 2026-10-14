@@ -403,6 +403,7 @@ export function NavRailNewThreadButton() {
   const { items, actions, isShortcutModifierHeld } = useSidebarNavigation();
   const split = useSidebarNavigationSplit(NEW_THREAD_NAVIGATION_ITEM_ID);
   const [desktopInfo] = useState(getBbDesktopInfo);
+  const isFramed = useIsSidebarFramed();
   const item = items.find(
     (candidate) => candidate.action.kind === "new-thread",
   );
@@ -418,6 +419,7 @@ export function NavRailNewThreadButton() {
         PROJECT_LIST_ACTION_BUTTON_CLASS,
         "w-auto flex-1",
         shouldUseMacosDesktopChrome(desktopInfo) &&
+          !isFramed &&
           MACOS_CHROME_CONTROL_AXIS_CLASS,
       )}
       disabled={item.isDisabled}
