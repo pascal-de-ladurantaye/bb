@@ -230,7 +230,7 @@ function EmbeddedThreadChatWithComposer({
   const pendingInteractionsQuery = useThreadPendingInteractions(threadId);
   const composerBlockingPendingInteractions = orderPendingInteractions(
     pendingInteractionsQuery.data,
-  ).filter((interaction) => interaction.payload.kind !== "plugin");
+  );
   const hasComposerBlockingPendingInteraction =
     composerBlockingPendingInteractions.length > 0;
   useThreadReadTracking({
