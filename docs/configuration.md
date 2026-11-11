@@ -928,16 +928,17 @@ ui_preference_conflict`. Read and write them with `bb settings ui
 list|get|set|reset` or `sdk.system.uiPreferences` (see
 `bb guide customization`).
 
-| Key                           | Value                                                                                                                                                     |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sidebar.threadListProvider`  | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one    |
-| `sidebar.navigationProvider`  | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`          |
-| `sidebar.pluginPanelOrder`    | Navigation destination order                                                                                                                              |
-| `sidebar.visiblePluginPanels` | Navigation destinations shown, or `null` for every destination                                                                                            |
-| `sidebar.footerOrder`         | Footer action order                                                                                                                                       |
-| `sidebar.hiddenFooterItems`   | Footer actions moved into More                                                                                                                            |
-| `threadContextCard.pinned`    | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header |
-| `infoPanel.collapsedSections` | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)             |
+| Key                              | Value                                                                                                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidebar.threadListProvider`     | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one                  |
+| `sidebar.navigationProvider`     | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`                        |
+| `sidebar.pluginPanelOrder`       | Navigation destination order                                                                                                                                            |
+| `sidebar.visiblePluginPanels`    | Navigation destinations shown, or `null` for every destination                                                                                                          |
+| `sidebar.footerOrder`            | Footer action order                                                                                                                                                     |
+| `sidebar.hiddenFooterItems`      | Footer actions moved into More                                                                                                                                          |
+| `threadContextCard.pinned`       | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header               |
+| `threadContextCard.openSections` | Thread context card sections that are open (`<pluginId>/<sectionId>`, or `core/<sectionId>` for bb's own); sections start closed and the list is shared by every thread |
+| `infoPanel.collapsedSections`    | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)                           |
 
 A legacy `__builtin__` thread list selection resolves to the bundled plugin.
 Footer IDs are `builtin:settings` (top list layout only), `builtin:mobile`,
@@ -1090,6 +1091,7 @@ either way.
   plugin releases can go out ahead of a retry scheduled for later (for example
   a provider-retry row waiting hours for a subscription window) and overtake
   it; with it, those rows wait for the retry.
+
 - `threadContextCard` moves a running thread's
   details into the thread context card at the upper-right of its pane: bb's parent
   thread and child threads, the Git plugin's changes, which open the Diff tab,
