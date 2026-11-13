@@ -351,8 +351,10 @@ saved in `<dataDir>/setup-guide-assignment.json` is reused.
 
 **Anonymous usage telemetry.** PostHog events carry a random install id, app
 version, install kind, platform, OS release, architecture, and Node version.
+Every event sets `$process_person_profile: false`, so PostHog keeps no person
+profile for an install.
 The server sends events such as `app_started`, `telemetry_disabled`, `thread_created`,
-`user_message_sent`, `turn_finished`, and `plugin_installed`. The app reports setup-guide and
+`user_message_sent`, and `plugin_installed`. The app reports setup-guide and
 first-send events through `POST /api/v1/system/telemetry/events`
 (`sdk.system.experimental_recordTelemetryEvent`), such as `onboarding_started`,
 `onboarding_step_reached`, `onboarding_step_completed`,
@@ -374,15 +376,16 @@ guide (by either route), and Continue on the plugins step only when a featured
 plugin is on; otherwise each counts as skipped.
 `onboarding_exposed` (`entry` `first_run` or `replay`) marks the setup guide
 being shown: the server saves the flag assignment, adds `setup_guide_variant`
-and `setup_guide_source` (`override`, `flag`, or `default`), sets
-`setup_guide_variant` as a person property, and sends PostHog's
+and `setup_guide_source` (`override`, `flag`, or `default`), and sends PostHog's
 `$feature_flag_called` when the flag decided the variant. The server adds
 `setup_guide_variant` to every setup-guide event (`onboarding_*` and onboarding
-`recommendation`), and once the flag assignment is known every event, including
-`turn_finished`, carries `$feature/setup-guide-redesign`.
+`recommendation`), and once the flag assignment is known every event carries
+`$feature/setup-guide-redesign`.
 `onboarding_operation` records a setup-guide action's `started`,
 `succeeded`, or `failed` outcome with counts only, the same way in both
-guides. A Projects step `scan` adds `timed_out` (true when the repo scan ran
+guides. A Projects step `scan` records nothing after the guide's first
+successful scan, such as the rescan after an import, and adds `timed_out`
+(true when the repo scan ran
 out of time and the list may be partial) and `unreadable_count` (how many
 folders the scan was not allowed to open, such as macOS Documents or Desktop;
 never their paths). A failed Projects `import` reports `item_count` (repos
@@ -391,15 +394,17 @@ selected) and `succeeded_count` (imported before the failure). Plugins step
 `disable` carry the plugin's public id in `resource_id`; `install` succeeds or
 fails when its install job finishes, not when the request is accepted, even
 if the guide moved to another step meanwhile; a cancelled install job records
-no outcome. `load`
-records only `failed`, once each time the Agent step's agent states or the
-Plugins step's catalog start failing to load; in the new guide the Agent step
-also records `timed_out` when its agent states haven't loaded after 10
-seconds and it offers Retry, once per attempt. `finish` records only `failed`,
+no outcome. `load` records `succeeded` the first time the Agent step's agent
+states or the Plugins step's catalog load, with `duration_ms` (time from the
+step first opening to the data arriving), and `failed` the first time they
+fail to load before any data arrives, each at most once per step per guide (a
+failed background refresh after the data loaded is not a load failure); in the new guide the Agent
+step also fails with `timed_out` when its agent states haven't loaded after 10
+seconds and it offers Retry. `finish` records only `failed`,
 with the step the guide closed from, when saving that setup was finished
 fails. Every `failed` outcome except `remote_access` adds `failure_reason`:
-`no_host` (no computer was available: once per guide for `scan`, and each
-time the Agent step opens without one for agent `load`), `host_unavailable`, `timed_out`,
+`no_host` (no computer was available: once per guide for `scan` and agent
+`load`), `host_unavailable`, `timed_out`,
 `not_found`, `permission`, `command_failed` (the agent install command, plugin
 install job, or new machine's setup ran and failed), or `other`. A failed
 `remote_access` adds `failure_stage`: `sign_in` (getbb.app sign-in couldn't
@@ -473,14 +478,6 @@ plugin), `plugin` (any other plugin), or `system` (bb's own retries and follow-u
 runs into an existing thread report `automation`. `bb thread spawn` run inside a thread
 sends that thread as `senderThreadId`; the new thread reports `agent` when the sender has a
 turn running, and `user` otherwise.
-
-`turn_finished` sends `outcome` (`succeeded`, `failed`, or `stopped`),
-`error_category` (`none`, `auth`, `billing`, `rate_limit`, `limit_reached`,
-`provider_unavailable`, `start_failed`, `process_exited`, `host_lost`, or `other`),
-`provider` (a shipped built-in provider ID, otherwise `other`), and
-`install_turn_number`, in addition to the standard event properties. The stored
-per-install number increments atomically on each enabled finish. It pauses while
-telemetry is off and resumes at the next number when enabled again.
 
 ## AI services
 
@@ -928,16 +925,17 @@ ui_preference_conflict`. Read and write them with `bb settings ui
 list|get|set|reset` or `sdk.system.uiPreferences` (see
 `bb guide customization`).
 
-| Key                           | Value                                                                                                                                                     |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sidebar.threadListProvider`  | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one    |
-| `sidebar.navigationProvider`  | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`          |
-| `sidebar.pluginPanelOrder`    | Navigation destination order                                                                                                                              |
-| `sidebar.visiblePluginPanels` | Navigation destinations shown, or `null` for every destination                                                                                            |
-| `sidebar.footerOrder`         | Footer action order                                                                                                                                       |
-| `sidebar.hiddenFooterItems`   | Footer actions moved into More                                                                                                                            |
-| `threadContextCard.pinned`    | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header |
-| `infoPanel.collapsedSections` | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)             |
+| Key                              | Value                                                                                                                                                                       |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidebar.threadListProvider`     | Plugin key or `__automatic__` (default): the first installed thread list plugin other than the bundled `thread-list/thread-list`, else the bundled one                      |
+| `sidebar.navigationProvider`     | Plugin key or `__automatic__` (default): the first navigation from a plugin other than the bundled Navigation plugin, else its `navigation/rail`                            |
+| `sidebar.pluginPanelOrder`       | Navigation destination order                                                                                                                                                |
+| `sidebar.visiblePluginPanels`    | Navigation destinations shown, or `null` for every destination                                                                                                              |
+| `sidebar.footerOrder`            | Footer action order                                                                                                                                                         |
+| `sidebar.hiddenFooterItems`      | Footer actions moved into More                                                                                                                                              |
+| `threadContextCard.pinned`       | `true` (default) keeps a thread pane's thread context card open beside the transcript when the pane is wide enough; `false` opens it only from the header                   |
+| `threadContextCard.openSections` | Thread context card sections that are open (`<pluginId>/<sectionId>`, or `bb--core/<sectionId>` for bb's own); sections start closed and the list is shared by every thread |
+| `infoPanel.collapsedSections`    | Collapsed thread Info panel sections (`commits`, `uncommittedChanges`, `childThreads`, `forks`, `threadStorage`, or `<pluginId>/<sectionId>`)                               |
 
 A legacy `__builtin__` thread list selection resolves to the bundled plugin.
 Footer IDs are `builtin:settings` (top list layout only), `builtin:mobile`,

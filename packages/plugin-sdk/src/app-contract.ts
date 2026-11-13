@@ -1088,6 +1088,22 @@ export interface PluginNavPanelRegistration {
    * throwing headerContent is hidden without breaking the title bar.
    */
   headerContent?: ComponentType<PluginNavPanelProps>;
+  /**
+   * Component rendered in the shared title bar instead of the panel icon,
+   * title and `experimental_usePageTitle` text, such as a breadcrumb. The
+   * window title still comes from `experimental_usePageTitle` or the panel
+   * title. A crash restores the default title without breaking the page.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_headerTitle?: ComponentType<PluginNavPanelProps>;
+  /**
+   * When true, the panel gets no navigation entry (sidebar, rail, More and
+   * the navigation arrangement) and no command palette entry. Its route
+   * `/plugins/<pluginId>/<path>/*` still renders with its title bar, right
+   * panel and splits; open it with `useBbNavigate().toPluginPanel(path)`.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_hideFromNavigation?: boolean;
 }
 
 /**
@@ -2121,8 +2137,63 @@ export interface ExperimentalThreadInfoSectionRegistration {
 }
 
 /**
+ * Props passed to an `experimental_threadHeaderRow` component, rendered
+ * between a thread's header and its timeline.
+ */
+export interface ExperimentalThreadHeaderRowProps {
+  /**
+   * The thread shown in the pane. A split layout renders a header row per
+   * pane, so the component mounts once per visible thread; keep per-thread
+   * state in the component, never in a module-level singleton.
+   */
+  threadId: string;
+  projectId: string;
+  /** The thread's environment, null when it has none. */
+  environment: ExperimentalThreadEnvironment | null;
+}
+
+/**
+ * A full-width row directly under the header of every thread pane, above the
+ * timeline, such as a tab strip of the threads that share an environment.
+ * Rows stack in order. Return null to take no space for this thread. A crash
+ * removes only this row for that thread.
+ */
+export interface ExperimentalThreadHeaderRowRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  /** Ascending; unset sorts last; ties keep registration order. */
+  order?: number;
+  component: ComponentType<ExperimentalThreadHeaderRowProps>;
+}
+
+/**
+ * Props passed to an `experimental_threadHeaderTitle` component, the same
+ * props a header row receives.
+ */
+export type ExperimentalThreadHeaderTitleProps =
+  ExperimentalThreadHeaderRowProps;
+
+/**
+ * Replaces the thread title text in the header of every thread pane, such as
+ * a `project › workspace` breadcrumb. bb keeps the rest of the header: the
+ * Thread actions menu after the title, header actions, pane controls, the
+ * right-panel toggle and the window drag region. While the user renames the
+ * thread, bb shows its rename field instead. Double-click does not start a
+ * rename on a plugin title, and dragging a split pane starts only from parts
+ * that are not links, buttons or inputs. When several plugins register one,
+ * the first in plugin order wins. A crash shows bb's title for that thread.
+ * The window title stays the thread title.
+ */
+export interface ExperimentalThreadHeaderTitleRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  component: ComponentType<ExperimentalThreadHeaderTitleProps>;
+}
+
+/**
  * Props passed to an `experimental_threadContextCardRow` or
- * `experimental_threadContextCardSection` component.
+ * `experimental_threadContextCardSection` component, and to a section's
+ * `summary`.
  */
 export interface ExperimentalThreadContextCardProps {
   /**
@@ -2172,9 +2243,13 @@ export interface ExperimentalThreadContextCardRowRegistration {
 
 /**
  * A titled section of the thread context card, below its rows; the card's
- * counterpart of `experimental_threadInfoSection`. bb draws the title and a
- * divider above it, and hides the section while its component renders
- * nothing. A crash removes only this section for that thread.
+ * counterpart of `experimental_threadInfoSection`. bb draws the title as a
+ * button that folds the section, and a divider above it, and hides the
+ * section while its component renders nothing. Sections start closed; bb
+ * remembers the open ones by `pluginId/id` across threads and restarts. The
+ * component stays mounted while the section is closed, so it keeps its data
+ * subscriptions and bb can tell whether it renders anything. A crash removes
+ * only this section for that thread.
  */
 export interface ExperimentalThreadContextCardSectionRegistration {
   /** Unique within the plugin; letters, digits, `-`, `_`. */
@@ -2191,6 +2266,17 @@ export interface ExperimentalThreadContextCardSectionRegistration {
   group: string;
   order?: number;
   component: ComponentType<ExperimentalThreadContextCardProps>;
+  /**
+   * A one-line summary bb draws beside the title while the section is closed,
+   * such as "6 PRs · 1 needs you"; without one a closed section shows only
+   * its title. It truncates to one line, so keep the key fact first. Render
+   * text only: it sits inside the title's toggle button, so bb makes it
+   * non-interactive and a button or link in it can't be clicked or focused.
+   * It receives the same props as `component`, mounts in its own crash
+   * boundary (a crash drops only the summary), and unmounts while the section
+   * is open.
+   */
+  summary?: ComponentType<ExperimentalThreadContextCardProps>;
 }
 
 /**
@@ -3941,6 +4027,22 @@ export interface PluginAppSlots {
    */
   experimental_threadInfoSection(
     registration: ExperimentalThreadInfoSectionRegistration,
+  ): void;
+  /**
+   * Add a full-width row under the header of every thread pane, above the
+   * timeline (see {@link ExperimentalThreadHeaderRowRegistration}).
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_threadHeaderRow(
+    registration: ExperimentalThreadHeaderRowRegistration,
+  ): void;
+  /**
+   * Replace the thread title text in the header of every thread pane (see
+   * {@link ExperimentalThreadHeaderTitleRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_threadHeaderTitle(
+    registration: ExperimentalThreadHeaderTitleRegistration,
   ): void;
   /**
    * Add a row to the thread context card of every thread pane (see
